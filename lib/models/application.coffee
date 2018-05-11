@@ -929,6 +929,10 @@ getApplicationModel = (deps, opts) ->
 		remove: tagsModel.remove
 	}
 
+	###*
+	# @namespace resin.models.application.configVar
+	# @memberof resin.models.application
+	###
 	exports.configVar = {
 		###*
 		# @summary Get all config variables for an application
@@ -1050,6 +1054,10 @@ getApplicationModel = (deps, opts) ->
 		remove: configVarModel.remove
 	}
 
+	###*
+	# @namespace resin.models.application.envVar
+	# @memberof resin.models.application
+	###
 	exports.envVar = {
 		###*
 		# @summary Get all environment variables for an application

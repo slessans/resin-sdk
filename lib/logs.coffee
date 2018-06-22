@@ -15,19 +15,26 @@ limitations under the License.
 ###
 
 Promise = require('bluebird')
-logs = require('resin-device-logs')
 errors = require('resin-errors')
 
 getLogs = (deps, opts) ->
-	configModel = require('./models/config')(deps, opts)
+	{ request } = deps
+
 	deviceModel = require('./models/device')(deps, opts)
 
 	exports = {}
 
-	getContext = (uuidOrId) ->
-		return Promise.props
-			device: deviceModel.get(uuidOrId)
-			pubNubKeys: configModel.getPubNubKeys()
+	getLogsPath = (device) ->
+		"/device/v2/#{device.uuid}/logs"
+
+	getLogsFromApi = (device, { count } = {}) ->
+		request.send
+			url: getLogsPath(device) + (if count then '?count=' + count else '')
+			baseUrl: opts.apiUrl
+		.get('body')
+
+	subscribeToApiLogs = (device) ->
+		return new EventEmitter()
 
 	###*
 	# @typedef LogSubscription
@@ -129,10 +136,10 @@ getLogs = (deps, opts) ->
 	# });
 	###
 	exports.subscribe = (uuidOrId, callback) ->
-		getContext(uuidOrId)
-		.then ({ pubNubKeys, device }) ->
-			return logs.subscribe(pubNubKeys, device)
-		.asCallback(callback)
+		deviceModel.get(uuidOrId)
+			.then (device) ->
+				subscribeToApiLogs(device)
+			.asCallback(callback)
 
 	###*
 	# @summary Get device logs history
@@ -180,10 +187,11 @@ getLogs = (deps, opts) ->
 		if typeof options == 'function'
 			callback = options
 			options = undefined
-		getContext(uuidOrId)
-		.then ({ pubNubKeys, device }) ->
-			return logs.history(pubNubKeys, device, options)
-		.asCallback(callback)
+
+		deviceModel.get(uuidOrId)
+			.then (device) ->
+				getLogsFromApi(device, options)
+			.asCallback(callback)
 
 	return exports
 

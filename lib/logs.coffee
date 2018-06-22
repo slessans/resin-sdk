@@ -16,6 +16,8 @@ limitations under the License.
 
 Promise = require('bluebird')
 errors = require('resin-errors')
+{ EventEmitter } = require('events')
+ndjson = require('ndjson')
 
 getLogs = (deps, opts) ->
 	{ request } = deps
@@ -34,7 +36,23 @@ getLogs = (deps, opts) ->
 		.get('body')
 
 	subscribeToApiLogs = (device) ->
-		return new EventEmitter()
+		emitter = new EventEmitter()
+		# FIXME: request.stream doesn't work in browsers
+		request.stream
+			url: getLogsPath(device) + '?stream=1'
+			baseUrl: opts.apiUrl
+		.then (stream) ->
+			parser = ndjson()
+			parser.on 'data', (log) ->
+				emitter.emit('line', log)
+			parser.on 'error', (err) ->
+				emitter.emit('error', err)
+			stream.pipe(parser)
+
+		emitter.unsubscribe = ->
+			# TODO: Close the connection
+
+		return emitter
 
 	###*
 	# @typedef LogSubscription
